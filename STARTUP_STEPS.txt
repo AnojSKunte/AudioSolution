@@ -1,0 +1,191 @@
+================================================================================
+              AUDIO SOLUTION - STARTUP STEPS (FOLLOW IN ORDER)
+================================================================================
+
+PREREQUISITE: Node.js installed? Run: node --version (should show v16+)
+
+================================================================================
+STEP 1: OPEN TERMINAL 1 (Backend Server)
+================================================================================
+
+1. Press: Windows Key + R
+2. Type:  cmd
+3. Press: Enter
+
+Now in Command Prompt, type these commands one by one:
+
+    cd "C:\Users\anojs\OneDrive\Desktop\Claude_CLI\Audio Solution\backend"
+    npm install
+    npm run dev
+
+WAIT until you see:
+    ╔════════════════════════════════════════╗
+    ║  Backend running on port 5000 ✓        ║
+    ╚════════════════════════════════════════╝
+
+✅ DO NOT CLOSE THIS TERMINAL!
+
+================================================================================
+STEP 2: OPEN TERMINAL 2 (Frontend Server) - NEW TERMINAL
+================================================================================
+
+1. Press: Windows Key + R
+2. Type:  cmd
+3. Press: Enter
+
+(This opens a SECOND command prompt window)
+
+Now in this new Command Prompt, type:
+
+    cd "C:\Users\anojs\OneDrive\Desktop\Claude_CLI\Audio Solution\frontend"
+    npm install
+    npm run dev
+
+WAIT until you see:
+    ╔════════════════════════════════════════╗
+    ║  Frontend running on port 3000 ✓       ║
+    ╚════════════════════════════════════════╝
+
+✅ DO NOT CLOSE THIS TERMINAL!
+
+================================================================================
+STEP 3: OPEN TERMINAL 3 (Audio Agent) - ANOTHER NEW TERMINAL
+================================================================================
+
+1. Press: Windows Key + R
+2. Type:  cmd
+3. Press: Enter
+
+(This opens a THIRD command prompt window)
+
+Now in this new Command Prompt, type:
+
+    cd "C:\Users\anojs\OneDrive\Desktop\Claude_CLI\Audio Solution\audio-agent"
+    npm install
+    npm run dev
+
+WAIT until you see:
+    ╔════════════════════════════════════════╗
+    ║  Audio Agent running ✓                 ║
+    ╚════════════════════════════════════════╝
+
+✅ DO NOT CLOSE THIS TERMINAL!
+
+================================================================================
+STEP 4: OPEN WEB BROWSER
+================================================================================
+
+1. Open: Google Chrome, Edge, or Firefox
+2. Go to: http://localhost:3000
+3. You should see the Audio Solution login page
+
+================================================================================
+STEP 5: CREATE ACCOUNT
+================================================================================
+
+1. Click "Register" or "Create Account"
+2. Fill in:
+   - Name: Your Name
+   - Email: your-email@example.com
+   - Password: password123
+   - Confirm: password123
+3. Click "Register"
+4. Click "Login"
+5. Enter your email and password
+6. Click "Login"
+
+✅ You should see the Dashboard!
+
+================================================================================
+STEP 6: VERIFY EVERYTHING WORKS
+================================================================================
+
+On the dashboard, you should see:
+
+LEFT PANEL:
+  ☐ Audio Sources (Spotify, Chrome, Discord, VLC)
+  ☐ Output Devices (Speakers, Bluetooth, USB, HDMI)
+
+MIDDLE:
+  ☐ Routing Control (to create routes)
+
+RIGHT:
+  ☐ Active Routes list
+
+TOP:
+  ☐ Metrics (CPU, Memory, Routes, Latency)
+
+If you see all of these, success! ✅
+
+================================================================================
+STEP 7: TEST CREATE ROUTE
+================================================================================
+
+1. Click "Spotify" in the Audio Sources list
+2. Click "Speakers" in the Output Devices list
+3. Click "Create Route"
+4. Look at "Active Routes" - you should see your new route
+5. Click the delete icon to remove the route
+
+If this works, everything is functioning! ✅
+
+================================================================================
+WHAT IF SOMETHING GOES WRONG?
+================================================================================
+
+Backend won't start?
+→ Port 5000 in use. Run:
+   netstat -ano | findstr :5000
+   taskkill /PID XXXX /F
+
+Frontend shows blank page?
+→ Press Ctrl+Shift+Delete to clear cache
+→ Or open in Incognito window
+→ Or try Ctrl+R to refresh
+
+Can't login?
+→ Make sure you registered first
+→ Check email spelling matches
+→ Open browser console (F12) for errors
+
+One terminal closed by accident?
+→ Just restart that terminal with the npm run dev command
+→ The app will reconnect automatically
+
+================================================================================
+STOPPING THE APPLICATION
+================================================================================
+
+When done, press Ctrl+C in each terminal window (in any order):
+- Terminal 1 (Backend)
+- Terminal 2 (Frontend)
+- Terminal 3 (Audio Agent)
+
+All servers will stop cleanly.
+
+================================================================================
+YOU'RE DONE! 🎉
+================================================================================
+
+You now have:
+✅ Backend API running on port 5000
+✅ Frontend web app running on port 3000
+✅ Local audio agent running
+✅ Working login/register system
+✅ Dashboard with audio sources and devices
+✅ Route management system
+✅ Real-time metrics
+
+NEXT STEPS:
+1. Test the application (create routes, change settings)
+2. Deploy to cloud (see DEPLOYMENT_GUIDE.md)
+3. Share with users
+
+Questions? See:
+- QUICK_START_GUIDE.md (detailed version)
+- GETTING_STARTED.md (first time setup)
+- DEPLOYMENT_GUIDE.md (how to deploy)
+- README.md (overview)
+- PROJECT_STATUS.md (what's built)
+
+================================================================================
