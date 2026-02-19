@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules
+npm-debug.log
+npm-error.log
+yarn-error.log
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+dist
+build
+
+# Documentation
+README.md
+DOCUMENTATION_INDEX.md
+GETTING_STARTED.md
+INSTALLATION_GUIDE.md
+QUICK_START_GUIDE.md
+DEPLOYMENT_GUIDE.md
+PROJECT_STATUS.md
+VERIFICATION_CHECKLIST.md
+COMPLETE_PROJECT_SUMMARY.md
+STARTUP_STEPS.txt
+EVERYTHING_COMPLETE.txt
+00_READ_ME_FIRST.md
+
+# Environment files (in production, use .env files)
+.env.local
+.env.development
+.env.test
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+
+# Testing
+coverage
+.nyc_output

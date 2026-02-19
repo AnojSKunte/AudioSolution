@@ -1,0 +1,66 @@
+name: audio-solution
+services:
+- name: backend
+  github:
+    branch: main
+    repo: AnojSKunte/AudioSolution
+  build_command: npm install && npm run build
+  dockerfile_path: Dockerfile.backend
+  http_port: 5000
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: "5000"
+  - key: JWT_SECRET
+    scope: RUN_TIME
+  - key: DATABASE_URL
+    scope: RUN_TIME
+  - key: CORS_ORIGIN
+    scope: RUN_TIME
+  health_check:
+    http_path: /api/health
+  http_routes:
+  - path: /api
+    destination:
+      service: backend
+
+- name: frontend
+  github:
+    branch: main
+    repo: AnojSKunte/AudioSolution
+  build_command: npm install && npm run build
+  dockerfile_path: Dockerfile.frontend
+  http_port: 3000
+  health_check:
+    http_path: /
+  routes:
+  - path: /
+    destination:
+      service: frontend
+
+- name: audio-agent
+  github:
+    branch: main
+    repo: AnojSKunte/AudioSolution
+  build_command: npm install
+  dockerfile_path: Dockerfile.agent
+  envs:
+  - key: API_URL
+    value: http://backend:5000
+  - key: NODE_ENV
+    value: production
+
+databases:
+- name: postgres
+  engine: PG
+  version: "15"
+  production: true
+
+static_sites:
+- name: docs
+  source_dir: ./
+  routes:
+  - path: /docs
+    destination:
+      service: frontend
