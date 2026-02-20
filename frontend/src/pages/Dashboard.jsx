@@ -21,9 +21,18 @@ function Dashboard() {
   });
 
   useEffect(() => {
+    // Fetch immediately when component mounts
     fetchAudioData();
+
+    // Then continuously refresh every 2 seconds for real-time updates
     const interval = setInterval(fetchAudioData, 2000);
-    return () => clearInterval(interval);
+
+    console.log('🎵 Real-time audio detection enabled (2s refresh)');
+
+    return () => {
+      clearInterval(interval);
+      console.log('🔌 Real-time audio detection stopped');
+    };
   }, []);
 
   const fetchAudioData = async () => {

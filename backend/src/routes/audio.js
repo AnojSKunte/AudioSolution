@@ -105,4 +105,43 @@ router.get('/status', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * Real-time sync from Electron agent
+ * POST /api/audio/sync
+ * Requires: Agent API key
+ * The agent sends REAL audio data every 2 seconds
+ */
+router.post('/sync', authenticate, (req, res) => {
+  try {
+    const userId = getUserId(req);
+
+    // Only agents can sync (not regular web users)
+    if (!req.agent) {
+      return res.status(401).json({ error: 'Only agents can sync audio data' });
+    }
+
+    const { inputs, outputs, timestamp } = req.body;
+
+    // Update user's audio devices with REAL data from agent
+    if (inputs && Array.isArray(inputs)) {
+      userService.updateUserAudioApps(userId, inputs);
+    }
+
+    if (outputs && Array.isArray(outputs)) {
+      userService.updateUserAudioDevices(userId, outputs);
+    }
+
+    res.json({
+      status: 'synced',
+      userId,
+      inputsReceived: inputs ? inputs.length : 0,
+      outputsReceived: outputs ? outputs.length : 0,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error syncing audio:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

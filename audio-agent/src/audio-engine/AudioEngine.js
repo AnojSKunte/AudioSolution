@@ -1,8 +1,11 @@
 /**
  * Audio Engine - Handles WASAPI audio routing on Windows
+ * Real-time audio detection and syncing
  */
 
 const axios = require('axios');
+const path = require('path');
+const AudioDetector = require('../services/audioDetector');
 
 class AudioEngine {
   constructor(options = {}) {
@@ -124,14 +127,33 @@ class AudioEngine {
 
   async syncWithBackend() {
     try {
-      // Send heartbeat to backend
-      await axios.post(`${this.apiUrl}/api/audio/agent-heartbeat`, {
+      // Detect REAL audio devices and applications
+      const [inputs, outputs] = await Promise.all([
+        AudioDetector.getAudioApplications(),
+        AudioDetector.getOutputDevices()
+      ]);
+
+      // Update local cache
+      this.inputs = inputs;
+      this.outputs = outputs;
+
+      // Send real audio data to backend
+      await axios.post(`${this.apiUrl}/api/audio/sync`, {
         agentVersion: '1.0.0',
         status: 'running',
+        inputs: inputs,
+        outputs: outputs,
         routeCount: this.routes.length,
         timestamp: new Date()
-      }).catch(() => {
+      }, {
+        headers: {
+          'x-api-key': process.env.API_KEY || ''
+        }
+      }).catch((err) => {
         // Gracefully handle backend unavailable
+        if (err.response?.status !== 401) {
+          console.log('Backend sync pending...');
+        }
       });
     } catch (error) {
       // Silently handle sync errors
