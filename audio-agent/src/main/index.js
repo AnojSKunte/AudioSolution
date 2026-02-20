@@ -12,7 +12,7 @@ let tray;
 let mainWindow;
 let audioEngine;
 
-const API_URL = process.env.API_URL || 'http://localhost:5000';
+const API_URL = process.env.API_URL || 'https://sea-turtle-app-f52qx.ondigitalocean.app';
 
 // Create main window
 function createWindow() {
