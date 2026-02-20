@@ -20,8 +20,6 @@ function Dashboard() {
     latency: 0
   });
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
   useEffect(() => {
     fetchAudioData();
     const interval = setInterval(fetchAudioData, 2000);
@@ -31,22 +29,22 @@ function Dashboard() {
   const fetchAudioData = async () => {
     try {
       // Fetch inputs
-      const inputsRes = await fetch(`${API_URL}/api/audio/inputs`);
+      const inputsRes = await fetch(`/api/audio/inputs`);
       const inputsData = await inputsRes.json();
       setInputs(inputsData.inputs || []);
 
       // Fetch outputs
-      const outputsRes = await fetch(`${API_URL}/api/audio/outputs`);
+      const outputsRes = await fetch(`/api/audio/outputs`);
       const outputsData = await outputsRes.json();
       setOutputs(outputsData.outputs || []);
 
       // Fetch routes
-      const routesRes = await fetch(`${API_URL}/api/routes`);
+      const routesRes = await fetch(`/api/routes`);
       const routesData = await routesRes.json();
       setRoutes(routesData.routes || []);
 
       // Fetch status/metrics
-      const statusRes = await fetch(`${API_URL}/api/audio/status`);
+      const statusRes = await fetch(`/api/audio/status`);
       const statusData = await statusRes.json();
       setMetrics(statusData.metrics || {});
       setStatus('connected');
@@ -65,7 +63,7 @@ function Dashboard() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/routes`, {
+      const response = await fetch(`/api/routes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

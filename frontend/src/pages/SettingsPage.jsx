@@ -5,19 +5,17 @@ function SettingsPage() {
   const [stats, setStats] = useState(null);
   const [subscription, setSubscription] = useState(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
   useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const statsRes = await fetch(`${API_URL}/api/user/stats`);
+      const statsRes = await fetch(`/api/user/stats`);
       const statsData = await statsRes.json();
       setStats(statsData);
 
-      const subRes = await fetch(`${API_URL}/api/user/subscription`);
+      const subRes = await fetch(`/api/user/subscription`);
       const subData = await subRes.json();
       setSubscription(subData);
     } catch (error) {

@@ -7,8 +7,7 @@ function RoutesList({ routes, onRefresh }) {
 
   const handleDelete = async (routeId) => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/api/routes/${routeId}`, {
+      const response = await fetch(`/api/routes/${routeId}`, {
         method: 'DELETE'
       });
 
@@ -22,8 +21,7 @@ function RoutesList({ routes, onRefresh }) {
 
   const handleToggle = async (routeId, currentActive) => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/api/routes/${routeId}`, {
+      const response = await fetch(`/api/routes/${routeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: !currentActive })
