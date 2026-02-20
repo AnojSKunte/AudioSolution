@@ -35,7 +35,7 @@ COPY backend/ ./backend/
 COPY audio-agent/ ./audio-agent/
 
 # Copy built frontend from stage 1
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Copy frontend package.json for reference
 COPY frontend/package*.json ./frontend/
