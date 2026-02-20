@@ -21,6 +21,9 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static frontend files
+app.use(express.static('/app/frontend/build'));
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -44,9 +47,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
+// Fallback to React app for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile('/app/frontend/build/index.html');
 });
 
 const PORT = process.env.PORT || 5000;
