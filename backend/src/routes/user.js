@@ -1,42 +1,38 @@
 /**
- * User Profile & Settings Routes
+ * User Profile & Settings Routes - Real Data
  */
 
 const express = require('express');
 const router = express.Router();
-
-// Mock user data
-const userProfiles = {};
+const userService = require('../services/userService');
+const statsService = require('../services/statsService');
+const { authenticateUser, getUserId } = require('../middleware/auth');
 
 /**
- * Get user profile
+ * Get user profile with real data
  * GET /api/user/profile
+ * Requires: User token
  */
-router.get('/profile', (req, res) => {
+router.get('/profile', authenticateUser, (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const userId = getUserId(req);
+    const user = userService.getUserById(userId);
 
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    // Mock profile - in real implementation, decode JWT and fetch from DB
+    // Return real user data
     const profile = {
-      id: 'user-123',
-      email: 'user@example.com',
-      name: 'John Doe',
-      subscriptionPlan: 'free',
-      createdAt: new Date('2024-01-15'),
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
       preferences: {
         theme: 'dark',
         autoStart: true,
         notifications: true,
         volumeNormalization: true
-      },
-      stats: {
-        totalRoutes: 5,
-        totalRoutingTime: 3600,
-        averageLatency: 22
       }
     };
 
@@ -49,22 +45,30 @@ router.get('/profile', (req, res) => {
 /**
  * Update user profile
  * PUT /api/user/profile
+ * Requires: User token
  */
-router.put('/profile', (req, res) => {
+router.put('/profile', authenticateUser, (req, res) => {
   try {
+    const userId = getUserId(req);
     const { name, preferences } = req.body;
+    const user = userService.getUserById(userId);
 
-    const profile = {
-      id: 'user-123',
-      email: 'user@example.com',
-      name: name || 'John Doe',
-      preferences: preferences || {},
-      updatedAt: new Date()
-    };
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update user data
+    if (name) user.name = name;
+    if (preferences) user.preferences = { ...user.preferences, ...preferences };
 
     res.json({
       message: 'Profile updated successfully',
-      profile
+      profile: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        preferences: user.preferences
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -72,65 +76,81 @@ router.put('/profile', (req, res) => {
 });
 
 /**
- * Get user statistics
+ * Get real user statistics
  * GET /api/user/stats
+ * Requires: User token
  */
-router.get('/stats', (req, res) => {
+router.get('/stats', authenticateUser, (req, res) => {
   try {
-    const stats = {
-      totalRoutes: 12,
-      activeRoutes: 3,
-      totalRoutingTime: 36000,
-      hourlyUsage: [
-        { hour: 0, minutes: 0 },
-        { hour: 1, minutes: 5 },
-        { hour: 2, minutes: 120 },
-        { hour: 3, minutes: 240 },
-        { hour: 4, minutes: 180 }
-      ],
-      topApps: [
-        { name: 'Spotify', routeCount: 45, timeMinutes: 1200 },
-        { name: 'Chrome', routeCount: 38, timeMinutes: 900 },
-        { name: 'Discord', routeCount: 25, timeMinutes: 600 }
-      ],
-      devicePreferences: [
-        { name: 'Speakers', usageCount: 50 },
-        { name: 'Bluetooth', usageCount: 35 },
-        { name: 'Headphones', usageCount: 20 }
-      ]
-    };
+    const userId = getUserId(req);
 
-    res.json(stats);
+    // Get REAL statistics calculated from user's actual data
+    const stats = statsService.getUserStats(userId);
+
+    res.json({
+      totalRoutes: stats.totalRoutes,
+      activeRoutes: stats.activeRoutes,
+      totalRoutingTime: stats.totalRoutingTime, // in minutes
+      averageLatency: stats.averageLatency, // in ms
+      topApps: stats.topApps.map(app => ({
+        name: app.name,
+        routeCount: app.routeCount,
+        timeMinutes: app.timeMinutes
+      })),
+      devicePreferences: stats.devicePreferences.map(device => ({
+        name: device.name,
+        usageCount: device.usageCount
+      })),
+      audioAppsDetected: stats.audioAppsCount,
+      audioDevicesDetected: stats.audioDevicesCount,
+      lastUpdated: stats.lastUpdated
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * Get subscription info
+ * Get real subscription info
  * GET /api/user/subscription
+ * Requires: User token
  */
-router.get('/subscription', (req, res) => {
+router.get('/subscription', authenticateUser, (req, res) => {
   try {
-    const subscription = {
-      plan: 'free',
-      status: 'active',
-      routesLimit: 5,
-      routesUsed: 3,
-      devicesLimit: 3,
-      devicesUsed: 2,
-      features: {
-        basicRouting: true,
-        volumeControl: true,
-        statistics: false,
-        advancedMixing: false,
-        prioritySupport: false
-      },
-      trialEndsAt: null,
-      renewalDate: null
-    };
+    const userId = getUserId(req);
 
-    res.json(subscription);
+    // Get REAL subscription based on actual usage
+    const subscription = statsService.getSubscriptionInfo(userId);
+
+    res.json({
+      plan: subscription.plan,
+      planType: subscription.planType,
+      routesUsed: subscription.routesUsed,
+      routesLimit: subscription.routesLimit,
+      devicesUsed: subscription.devicesUsed,
+      devicesLimit: subscription.devicesLimit,
+      features: subscription.features,
+      renewalDate: subscription.renewalDate,
+      upgradeUrl: subscription.upgradeUrl
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get complete dashboard data
+ * GET /api/user/dashboard
+ * Requires: User token
+ */
+router.get('/dashboard', authenticateUser, (req, res) => {
+  try {
+    const userId = getUserId(req);
+
+    // Get comprehensive dashboard stats with real data
+    const dashboardData = statsService.getDashboardStats(userId);
+
+    res.json(dashboardData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

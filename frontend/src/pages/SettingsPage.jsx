@@ -11,13 +11,19 @@ function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
+      // Get real stats from user's actual data
       const statsRes = await fetch(`/api/user/stats`);
+      if (!statsRes.ok) throw new Error('Failed to fetch stats');
       const statsData = await statsRes.json();
       setStats(statsData);
 
+      // Get real subscription info
       const subRes = await fetch(`/api/user/subscription`);
+      if (!subRes.ok) throw new Error('Failed to fetch subscription');
       const subData = await subRes.json();
       setSubscription(subData);
+
+      console.log('✅ Loaded real statistics:', statsData);
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
@@ -76,7 +82,7 @@ function SettingsPage() {
               </div>
               <div className="stat-item">
                 <p className="stat-value">
-                  {(stats.totalRoutingTime / 60).toFixed(0)}h
+                  {Math.floor(stats.totalRoutingTime / 60)}h {stats.totalRoutingTime % 60}m
                 </p>
                 <p className="stat-label">Total Routing Time</p>
               </div>
