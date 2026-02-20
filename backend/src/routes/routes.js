@@ -1,43 +1,37 @@
 /**
- * Audio Routing Management Routes
+ * Audio Routing Management Routes - Multi-User Version
  */
 
 const express = require('express');
 const router = express.Router();
-
-// Mock database for routes
-const routesList = {};
+const userService = require('../services/userService');
+const { authenticate, getUserId } = require('../middleware/auth');
 
 /**
  * Create new route (connect input to output)
  * POST /api/routes
+ * Requires: User token or Agent API key
  */
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   try {
+    const userId = getUserId(req);
     const { inputId, outputId, volume, name } = req.body;
 
     if (!inputId || !outputId) {
       return res.status(400).json({ error: 'inputId and outputId required' });
     }
 
-    const routeId = `route-${Date.now()}`;
-
-    const route = {
-      id: routeId,
+    const route = userService.addRoute(userId, {
       inputId,
       outputId,
-      name: name || `Route ${Object.keys(routesList).length + 1}`,
+      name: name || 'New Route',
       volume: volume || 100,
-      active: true,
-      createdAt: new Date(),
       statistics: {
         timeActive: 0,
         dataTransferred: 0,
         dropouts: 0
       }
-    };
-
-    routesList[routeId] = route;
+    });
 
     res.status(201).json({
       message: 'Route created successfully',
@@ -49,12 +43,14 @@ router.post('/', (req, res) => {
 });
 
 /**
- * Get all routes for user
+ * Get all routes for current user
  * GET /api/routes
+ * Requires: User token or Agent API key
  */
-router.get('/', (req, res) => {
+router.get('/', authenticate, (req, res) => {
   try {
-    const routes = Object.values(routesList);
+    const userId = getUserId(req);
+    const routes = userService.getUserRoutes(userId);
 
     res.json({
       status: 'success',
@@ -69,10 +65,13 @@ router.get('/', (req, res) => {
 /**
  * Get single route
  * GET /api/routes/:id
+ * Requires: User token or Agent API key
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', authenticate, (req, res) => {
   try {
-    const route = routesList[req.params.id];
+    const userId = getUserId(req);
+    const routes = userService.getUserRoutes(userId);
+    const route = routes.find(r => r.id === req.params.id);
 
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
@@ -87,20 +86,22 @@ router.get('/:id', (req, res) => {
 /**
  * Update route
  * PUT /api/routes/:id
+ * Requires: User token or Agent API key
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, (req, res) => {
   try {
-    const route = routesList[req.params.id];
+    const userId = getUserId(req);
+    const { volume, active, name } = req.body;
+
+    const route = userService.updateRoute(userId, req.params.id, {
+      volume,
+      active,
+      name
+    });
 
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
-
-    const { volume, active, name } = req.body;
-
-    if (volume !== undefined) route.volume = volume;
-    if (active !== undefined) route.active = active;
-    if (name !== undefined) route.name = name;
 
     res.json({
       message: 'Route updated successfully',
@@ -114,16 +115,19 @@ router.put('/:id', (req, res) => {
 /**
  * Delete route
  * DELETE /api/routes/:id
+ * Requires: User token or Agent API key
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, (req, res) => {
   try {
-    const route = routesList[req.params.id];
+    const userId = getUserId(req);
+    const routes = userService.getUserRoutes(userId);
+    const route = routes.find(r => r.id === req.params.id);
 
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
 
-    delete routesList[req.params.id];
+    const deleted = userService.deleteRoute(userId, req.params.id);
 
     res.json({
       message: 'Route deleted successfully',
