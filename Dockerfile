@@ -7,7 +7,7 @@ WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
 
-RUN npm ci
+RUN npm install --production=false
 
 COPY frontend/ ./
 
@@ -21,12 +21,12 @@ WORKDIR /app
 # Install backend dependencies
 COPY backend/package*.json ./backend/
 
-RUN cd backend && npm ci
+RUN cd backend && npm install
 
 # Install audio-agent dependencies
 COPY audio-agent/package*.json ./audio-agent/
 
-RUN cd audio-agent && npm ci
+RUN cd audio-agent && npm install
 
 # Copy backend code
 COPY backend/ ./backend/
