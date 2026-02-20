@@ -4,59 +4,25 @@
 
 const express = require('express');
 const router = express.Router();
+const AudioDetector = require('../services/audioDetector');
 
 /**
  * Get available audio input sources
  * GET /api/audio/inputs
  */
-router.get('/inputs', (req, res) => {
+router.get('/inputs', async (req, res) => {
   try {
-    // Mock data - will be provided by Electron agent in real implementation
-    const inputs = [
-      {
-        id: 'spotify-pid-1234',
-        name: 'Spotify',
-        app: 'Spotify',
-        processId: 1234,
-        isActive: true,
-        volume: 80,
-        icon: 'spotify'
-      },
-      {
-        id: 'chrome-pid-5678',
-        name: 'Google Chrome (YouTube)',
-        app: 'Chrome',
-        processId: 5678,
-        isActive: true,
-        volume: 60,
-        icon: 'chrome'
-      },
-      {
-        id: 'discord-pid-9012',
-        name: 'Discord',
-        app: 'Discord',
-        processId: 9012,
-        isActive: false,
-        volume: 0,
-        icon: 'discord'
-      },
-      {
-        id: 'vlc-pid-3456',
-        name: 'VLC Media Player',
-        app: 'VLC',
-        processId: 3456,
-        isActive: true,
-        volume: 100,
-        icon: 'vlc'
-      }
-    ];
+    // Get real audio applications running on the system
+    const inputs = await AudioDetector.getAudioApplications();
 
     res.json({
       status: 'success',
       inputs,
-      count: inputs.length
+      count: inputs.length,
+      source: 'Real system detection'
     });
   } catch (error) {
+    console.error('Error fetching audio inputs:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -65,54 +31,19 @@ router.get('/inputs', (req, res) => {
  * Get available audio output devices
  * GET /api/audio/outputs
  */
-router.get('/outputs', (req, res) => {
+router.get('/outputs', async (req, res) => {
   try {
-    // Mock data - will be provided by Electron agent in real implementation
-    const outputs = [
-      {
-        id: 'device-1',
-        name: 'Speakers (JBL Flip 4)',
-        type: 'Speaker',
-        isDefault: true,
-        isConnected: true,
-        volume: 100,
-        icon: 'speaker'
-      },
-      {
-        id: 'device-2',
-        name: 'Bluetooth: JBL Flip 4',
-        type: 'Bluetooth',
-        isDefault: false,
-        isConnected: true,
-        volume: 85,
-        icon: 'bluetooth'
-      },
-      {
-        id: 'device-3',
-        name: 'Headphones (USB)',
-        type: 'USB',
-        isDefault: false,
-        isConnected: true,
-        volume: 70,
-        icon: 'headset'
-      },
-      {
-        id: 'device-4',
-        name: 'HDMI: Monitor',
-        type: 'HDMI',
-        isDefault: false,
-        isConnected: false,
-        volume: 50,
-        icon: 'monitor'
-      }
-    ];
+    // Get real audio output devices from the system
+    const outputs = await AudioDetector.getOutputDevices();
 
     res.json({
       status: 'success',
       outputs,
-      count: outputs.length
+      count: outputs.length,
+      source: 'Real system detection'
     });
   } catch (error) {
+    console.error('Error fetching audio outputs:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -121,23 +52,12 @@ router.get('/outputs', (req, res) => {
  * Get real-time audio status
  * GET /api/audio/status
  */
-router.get('/status', (req, res) => {
+router.get('/status', async (req, res) => {
   try {
-    const status = {
-      agentConnected: true,
-      agentVersion: '1.0.0',
-      osVersion: 'Windows 11',
-      timestamp: new Date().toISOString(),
-      metrics: {
-        cpuUsage: 32.5,
-        memoryUsage: 156.3,
-        activeRoutes: 2,
-        latency: 22
-      }
-    };
-
+    const status = await AudioDetector.getAudioStatus();
     res.json(status);
   } catch (error) {
+    console.error('Error fetching audio status:', error);
     res.status(500).json({ error: error.message });
   }
 });
