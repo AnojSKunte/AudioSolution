@@ -21,12 +21,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email and password required' });
     }
 
-    if (userService.getUserByEmail(email)) {
+    if (await userService.getUserByEmail(email)) {
       return res.status(409).json({ error: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = userService.createUser(email, hashedPassword, name);
+    const user = await userService.createUser(email, hashedPassword, name);
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
@@ -60,7 +60,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password required' });
     }
 
-    const user = userService.getUserByEmail(email);
+    const user = await userService.getUserByEmail(email);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -154,10 +154,10 @@ router.get('/api-keys', authenticateUser, (req, res) => {
  * Get current user profile
  * GET /api/auth/profile
  */
-router.get('/profile', authenticateUser, (req, res) => {
+router.get('/profile', authenticateUser, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const user = userService.getUserById(userId);
+    const user = await userService.getUserById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

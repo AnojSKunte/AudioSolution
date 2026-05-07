@@ -111,7 +111,7 @@ router.get('/status', authenticate, async (req, res) => {
  * Requires: Agent API key
  * The agent sends REAL audio data every 2 seconds
  */
-router.post('/sync', authenticate, (req, res) => {
+router.post('/sync', authenticate, async (req, res) => {
   try {
     const userId = getUserId(req);
 
@@ -124,11 +124,11 @@ router.post('/sync', authenticate, (req, res) => {
 
     // Update user's audio devices with REAL data from agent
     if (inputs && Array.isArray(inputs)) {
-      userService.updateUserAudioApps(userId, inputs);
+      await userService.updateUserAudioApps(userId, inputs);
     }
 
     if (outputs && Array.isArray(outputs)) {
-      userService.updateUserAudioDevices(userId, outputs);
+      await userService.updateUserAudioDevices(userId, outputs);
     }
 
     res.json({

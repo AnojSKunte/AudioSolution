@@ -1,226 +1,126 @@
 /**
- * User Service - Manages users and API keys
+ * User Service - Production Version
+ * Manages users and API keys using PostgreSQL.
  */
 
 const crypto = require('crypto');
+const db = require('../db');
 
 class UserService {
-  constructor() {
-    this.users = {}; // In-memory storage (replace with DB in production)
-    this.apiKeys = {}; // Map of API keys to user IDs
-  }
-
   /**
    * Create a new user
    */
-  createUser(email, hashedPassword, name) {
-    const userId = crypto.randomUUID();
-
-    this.users[email] = {
-      id: userId,
-      email,
-      password: hashedPassword,
-      name: name || email.split('@')[0],
-      createdAt: new Date(),
-      audioDevices: [],
-      audioApps: [],
-      routes: [],
-      apiKeys: []
-    };
-
-    return this.users[email];
+  async createUser(email, hashedPassword, name) {
+    const query = `
+      INSERT INTO users (email, password, full_name)
+      VALUES ($1, $2, $3)
+      RETURNING id, email, full_name as name, created_at, subscription_status
+    `;
+    const values = [email, hashedPassword, name || email.split('@')[0]];
+    const res = await db.query(query, values);
+    return res.rows[0];
   }
 
   /**
    * Get user by email
    */
-  getUserByEmail(email) {
-    return this.users[email] || null;
+  async getUserByEmail(email) {
+    const query = 'SELECT id, email, password, full_name as name, subscription_status FROM users WHERE email = $1';
+    const res = await db.query(query, [email]);
+    return res.rows[0] || null;
   }
 
   /**
    * Get user by ID
    */
-  getUserById(userId) {
-    return Object.values(this.users).find(u => u.id === userId) || null;
+  async getUserById(userId) {
+    const query = 'SELECT id, email, full_name as name, created_at, stripe_customer_id, subscription_status FROM users WHERE id = $1';
+    const res = await db.query(query, [userId]);
+    return res.rows[0] || null;
   }
 
-  /**
-   * Generate API key for Electron agent
-   */
-  generateApiKey(userId) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      throw new Error('User not found');
+  async updateUserAudioDevices(userId, devices) {
+    for (const device of devices) {
+      const query = `
+        INSERT INTO audio_devices (user_id, device_id, name, type, is_default, is_connected, last_seen)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (user_id, device_id, type) DO UPDATE SET
+          name = EXCLUDED.name,
+          is_default = EXCLUDED.is_default,
+          is_connected = EXCLUDED.is_connected,
+          last_seen = NOW()
+      `;
+      await db.query(query, [
+        userId, 
+        device.id, 
+        device.name, 
+        device.type === 'Speaker' ? 'output' : 'input',
+        device.isDefault || false,
+        device.isConnected || true
+      ]);
     }
-
-    const apiKey = `sk_${crypto.randomBytes(32).toString('hex')}`;
-
-    user.apiKeys.push({
-      key: apiKey,
-      createdAt: new Date(),
-      lastUsed: null,
-      name: `Agent Key ${new Date().toLocaleDateString()}`
-    });
-
-    this.apiKeys[apiKey] = userId;
-
-    return apiKey;
+    return devices;
   }
 
-  /**
-   * Verify API key and return user ID
-   */
-  verifyApiKey(apiKey) {
-    return this.apiKeys[apiKey] || null;
+  async updateUserAudioApps(userId, apps) {
+    for (const app of apps) {
+      const query = `
+        INSERT INTO audio_devices (user_id, device_id, name, type, is_connected, last_seen)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (user_id, device_id, type) DO UPDATE SET
+          name = EXCLUDED.name,
+          is_connected = EXCLUDED.is_connected,
+          last_seen = NOW()
+      `;
+      await db.query(query, [
+        userId, 
+        app.id, 
+        app.name, 
+        'input',
+        app.isActive || true
+      ]);
+    }
+    return apps;
   }
 
-  /**
-   * Get user's API keys
-   */
-  getUserApiKeys(userId) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      return [];
-    }
-
-    return user.apiKeys.map(k => ({
-      key: k.key.substring(0, 10) + '***' + k.key.substring(k.key.length - 4),
-      fullKey: k.key,
-      createdAt: k.createdAt,
-      lastUsed: k.lastUsed,
-      name: k.name
-    }));
+  async getUserAudioDevices(userId) {
+    const query = "SELECT device_id as id, name, type, is_default as \"isDefault\", is_connected as \"isConnected\" FROM audio_devices WHERE user_id = $1 AND type = 'output'";
+    const res = await db.query(query, [userId]);
+    return res.rows;
   }
 
-  /**
-   * Revoke API key
-   */
-  revokeApiKey(userId, apiKey) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      return false;
-    }
+  async getUserAudioApps(userId) {
+    const query = "SELECT device_id as id, name, type, is_connected as \"isActive\" FROM audio_devices WHERE user_id = $1 AND type = 'input'";
+    const res = await db.query(query, [userId]);
+    return res.rows;
+  }
 
-    const keyIndex = user.apiKeys.findIndex(k => k.key === apiKey);
-    if (keyIndex === -1) {
-      return false;
-    }
+  async addRoute(userId, route) {
+    const query = `
+      INSERT INTO audio_routes (user_id, input_device_id, output_device_id, volume, is_active) 
+      VALUES ($1, $2, $3, $4, true) 
+      RETURNING id, input_device_id as \"inputId\", output_device_id as \"outputId\", volume, is_active as \"isActive\"
+    `;
+    const res = await db.query(query, [userId, route.inputId, route.outputId, route.volume]);
+    return res.rows[0];
+  }
 
-    user.apiKeys.splice(keyIndex, 1);
-    delete this.apiKeys[apiKey];
+  async getUserRoutes(userId) {
+    const query = `
+      SELECT id, input_device_id as \"inputId\", output_device_id as \"outputId\", volume, is_active as \"isActive\"
+      FROM audio_routes 
+      WHERE user_id = $1
+    `;
+    const res = await db.query(query, [userId]);
+    return res.rows;
+  }
+
+  async deleteRoute(userId, routeId) {
+    const query = 'DELETE FROM audio_routes WHERE user_id = $1 AND id = $2';
+    await db.query(query, [userId, routeId]);
     return true;
-  }
-
-  /**
-   * Update user's audio devices
-   */
-  updateUserAudioDevices(userId, devices) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    user.audioDevices = devices;
-    return user.audioDevices;
-  }
-
-  /**
-   * Update user's audio apps
-   */
-  updateUserAudioApps(userId, apps) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    user.audioApps = apps;
-    return user.audioApps;
-  }
-
-  /**
-   * Get user's audio devices
-   */
-  getUserAudioDevices(userId) {
-    const user = this.getUserById(userId);
-    return user ? user.audioDevices : [];
-  }
-
-  /**
-   * Get user's audio apps
-   */
-  getUserAudioApps(userId) {
-    const user = this.getUserById(userId);
-    return user ? user.audioApps : [];
-  }
-
-  /**
-   * Add audio route for user
-   */
-  addRoute(userId, route) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const routeWithMeta = {
-      id: crypto.randomUUID(),
-      ...route,
-      userId,
-      createdAt: new Date(),
-      active: true
-    };
-
-    user.routes.push(routeWithMeta);
-    return routeWithMeta;
-  }
-
-  /**
-   * Get user's routes
-   */
-  getUserRoutes(userId) {
-    const user = this.getUserById(userId);
-    return user ? user.routes : [];
-  }
-
-  /**
-   * Delete route
-   */
-  deleteRoute(userId, routeId) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      return false;
-    }
-
-    const index = user.routes.findIndex(r => r.id === routeId);
-    if (index === -1) {
-      return false;
-    }
-
-    user.routes.splice(index, 1);
-    return true;
-  }
-
-  /**
-   * Update route
-   */
-  updateRoute(userId, routeId, updates) {
-    const user = this.getUserById(userId);
-    if (!user) {
-      return null;
-    }
-
-    const route = user.routes.find(r => r.id === routeId);
-    if (!route) {
-      return null;
-    }
-
-    Object.assign(route, updates, { userId }); // Prevent changing userId
-    return route;
   }
 }
 
-// Singleton instance
 const userService = new UserService();
-
 module.exports = userService;

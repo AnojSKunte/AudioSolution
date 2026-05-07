@@ -1,11 +1,13 @@
 /**
  * Audio Engine - Handles WASAPI audio routing on Windows
- * Real-time audio detection and syncing
+ * Real-time audio detection and selective application routing
  */
 
 const axios = require('axios');
 const path = require('path');
 const AudioDetector = require('../services/audioDetector');
+const { startAudioCapture, stopAudioCapture } = require('application-loopback');
+const Speaker = require('speaker');
 
 class AudioEngine {
   constructor(options = {}) {
@@ -13,6 +15,8 @@ class AudioEngine {
     this.onStatusChange = options.onStatusChange || (() => {});
     this.onError = options.onError || (() => {});
     this.isRunning = false;
+    this.activeCaptures = new Map(); // inputId -> capture object
+    this.activeSpeakers = new Map(); // routeId -> Speaker object
     this.routes = [];
     this.inputs = [];
     this.outputs = [];
@@ -24,18 +28,18 @@ class AudioEngine {
       this.isRunning = true;
       this.startTime = Date.now();
 
-      // Initialize WASAPI (Windows Audio Session API)
-      this.initWASAPI();
+      // Initialize Device Detection
+      await this.loadAudioDevices();
 
       // Start monitoring
       this.startMonitoring();
 
       this.onStatusChange({
         status: 'running',
-        message: 'Audio Engine started successfully'
+        message: 'Audio Engine started with Real-Time Loopback support'
       });
 
-      console.log('✓ Audio Engine started');
+      console.log('✓ Audio Engine started with Real-Time Loopback');
     } catch (error) {
       console.error('Error starting Audio Engine:', error);
       this.onError(error.message);
@@ -44,63 +48,40 @@ class AudioEngine {
 
   stop() {
     this.isRunning = false;
-    // Clean up routes
-    this.routes.forEach(route => this.deleteRoute(route.id));
-    console.log('✓ Audio Engine stopped');
-  }
+    
+    // Stop all active routing
+    this.activeCaptures.forEach((capture, inputId) => {
+      stopAudioCapture(capture.pid);
+    });
+    this.activeCaptures.clear();
 
-  initWASAPI() {
-    try {
-      // In a real implementation, this would use native bindings
-      // For now, we'll use mock implementation that's production-ready structure
-      this.wasapi = {
-        initialized: true,
-        sessionManager: {},
-        deviceEnumerator: {}
-      };
+    this.activeSpeakers.forEach((speaker) => {
+      speaker.end();
+    });
+    this.activeSpeakers.clear();
 
-      this.loadAudioDevices();
-    } catch (error) {
-      console.error('WASAPI initialization error:', error);
-      throw error;
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
     }
+
+    console.log('✓ Audio Engine stopped and all routes cleared');
   }
 
-  loadAudioDevices() {
-    // Load audio inputs and outputs
-    // This would normally enumerate via WASAPI
-    this.inputs = [
-      {
-        id: 'input-1',
-        name: 'Spotify',
-        app: 'Spotify',
-        processId: 1234,
-        isActive: true
-      },
-      {
-        id: 'input-2',
-        name: 'Chrome',
-        app: 'Chrome',
-        processId: 5678,
-        isActive: true
-      }
-    ];
-
-    this.outputs = [
-      {
-        id: 'output-1',
-        name: 'Speakers (JBL Flip 4)',
-        type: 'Speaker',
-        isDefault: true,
-        isConnected: true
-      },
-      {
-        id: 'output-2',
-        name: 'Bluetooth: JBL Flip 4',
-        type: 'Bluetooth',
-        isConnected: true
-      }
-    ];
+  async loadAudioDevices() {
+    try {
+      // Load real audio inputs and outputs using AudioDetector
+      const [inputs, outputs] = await Promise.all([
+        AudioDetector.getAudioApplications(),
+        AudioDetector.getOutputDevices()
+      ]);
+      
+      this.inputs = inputs;
+      this.outputs = outputs;
+      
+      console.log(`Detected ${inputs.length} audio apps and ${outputs.length} output devices.`);
+    } catch (error) {
+      console.error('Error loading audio devices:', error);
+    }
   }
 
   startMonitoring() {
@@ -109,20 +90,12 @@ class AudioEngine {
       if (!this.isRunning) return;
 
       try {
-        // Check device status
-        this.checkDeviceStatus();
-
         // Sync with backend
         await this.syncWithBackend();
       } catch (error) {
         console.error('Monitoring error:', error);
       }
     }, 2000);
-  }
-
-  checkDeviceStatus() {
-    // Check if devices are still connected
-    // This would normally use WASAPI device enumeration
   }
 
   async syncWithBackend() {
@@ -150,7 +123,6 @@ class AudioEngine {
           'x-api-key': process.env.API_KEY || ''
         }
       }).catch((err) => {
-        // Gracefully handle backend unavailable
         if (err.response?.status !== 401) {
           console.log('Backend sync pending...');
         }
@@ -162,32 +134,76 @@ class AudioEngine {
 
   async createRoute(inputId, outputId, volume = 100) {
     try {
+      const input = this.inputs.find(i => i.id === inputId);
+      const output = this.outputs.find(o => o.id === outputId);
+
+      if (!input) throw new Error(`Input ${inputId} not found or not running`);
+      
+      const routeId = `route-${Date.now()}`;
+      
+      // Start Real Audio Loopback for this specific PID
+      const pid = parseInt(input.processId);
+      console.log(`Starting real-time capture for PID: ${pid}`);
+
+      // Setup Output Speaker (Simplified for MVP, would need device selection in real impl)
+      // Note: 'speaker' library usually outputs to default device. 
+      // Multi-device output requires native bindings selection.
+      const speaker = new Speaker({
+        channels: 2,
+        bitDepth: 16,
+        sampleRate: 44100
+      });
+
+      startAudioCapture(pid, {
+        onData: (chunk) => {
+          // chunk is raw PCM audio
+          // We pipe it to our speaker instance
+          if (this.isRunning) {
+            speaker.write(chunk);
+          }
+        },
+      });
+
       const route = {
-        id: `route-${Date.now()}`,
+        id: routeId,
         inputId,
         outputId,
         volume,
         status: 'active',
+        pid: pid,
         createdAt: new Date()
       };
 
       this.routes.push(route);
+      this.activeSpeakers.set(routeId, speaker);
+      this.activeCaptures.set(inputId, { pid });
 
       this.onStatusChange({
         status: 'route-created',
         route
       });
 
+      console.log(`✓ Real Route Active: ${input.name} -> ${output ? output.name : 'Default Output'}`);
       return route;
     } catch (error) {
-      this.onError(`Failed to create route: ${error.message}`);
+      console.error('Route Creation Error:', error);
+      this.onError(`Failed to create real route: ${error.message}`);
       throw error;
     }
   }
 
   async deleteRoute(routeId) {
     try {
-      this.routes = this.routes.filter(r => r.id !== routeId);
+      const route = this.routes.find(r => r.id === routeId);
+      if (route) {
+        stopAudioCapture(route.pid);
+        const speaker = this.activeSpeakers.get(routeId);
+        if (speaker) speaker.end();
+        
+        this.activeSpeakers.delete(routeId);
+        this.activeCaptures.delete(route.inputId);
+        this.routes = this.routes.filter(r => r.id !== routeId);
+      }
 
       this.onStatusChange({
         status: 'route-deleted',

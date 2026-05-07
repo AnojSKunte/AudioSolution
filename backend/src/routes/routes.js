@@ -12,7 +12,7 @@ const { authenticate, getUserId } = require('../middleware/auth');
  * POST /api/routes
  * Requires: User token or Agent API key
  */
-router.post('/', authenticate, (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { inputId, outputId, volume, name } = req.body;
@@ -21,7 +21,7 @@ router.post('/', authenticate, (req, res) => {
       return res.status(400).json({ error: 'inputId and outputId required' });
     }
 
-    const route = userService.addRoute(userId, {
+    const route = await userService.addRoute(userId, {
       inputId,
       outputId,
       name: name || 'New Route',
@@ -47,10 +47,10 @@ router.post('/', authenticate, (req, res) => {
  * GET /api/routes
  * Requires: User token or Agent API key
  */
-router.get('/', authenticate, (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const routes = userService.getUserRoutes(userId);
+    const routes = await userService.getUserRoutes(userId);
 
     res.json({
       status: 'success',
@@ -67,10 +67,10 @@ router.get('/', authenticate, (req, res) => {
  * GET /api/routes/:id
  * Requires: User token or Agent API key
  */
-router.get('/:id', authenticate, (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const routes = userService.getUserRoutes(userId);
+    const routes = await userService.getUserRoutes(userId);
     const route = routes.find(r => r.id === req.params.id);
 
     if (!route) {
@@ -88,12 +88,12 @@ router.get('/:id', authenticate, (req, res) => {
  * PUT /api/routes/:id
  * Requires: User token or Agent API key
  */
-router.put('/:id', authenticate, (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { volume, active, name } = req.body;
 
-    const route = userService.updateRoute(userId, req.params.id, {
+    const route = await userService.updateRoute(userId, req.params.id, {
       volume,
       active,
       name
@@ -117,17 +117,17 @@ router.put('/:id', authenticate, (req, res) => {
  * DELETE /api/routes/:id
  * Requires: User token or Agent API key
  */
-router.delete('/:id', authenticate, (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const routes = userService.getUserRoutes(userId);
+    const routes = await userService.getUserRoutes(userId);
     const route = routes.find(r => r.id === req.params.id);
 
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
 
-    const deleted = userService.deleteRoute(userId, req.params.id);
+    const deleted = await userService.deleteRoute(userId, req.params.id);
 
     res.json({
       message: 'Route deleted successfully',

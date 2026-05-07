@@ -38,6 +38,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/audio', require('./routes/audio'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/payments', require('./routes/payments'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

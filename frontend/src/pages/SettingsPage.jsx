@@ -29,6 +29,79 @@ function SettingsPage() {
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleUpgrade = async () => {
+    const isLoaded = await loadRazorpayScript();
+
+    if (!isLoaded) {
+      alert('Razorpay SDK failed to load. Are you online?');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/payments/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      const data = await response.json();
+
+      const options = {
+        key: data.key_id,
+        subscription_id: data.subscription_id,
+        name: 'Audio Solution Pro',
+        description: 'Monthly Subscription',
+        handler: async function (response) {
+          // Verify payment on backend
+          const verifyRes = await fetch('/api/payments/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_subscription_id: response.razorpay_subscription_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+
+          const verifyData = await verifyRes.json();
+          if (verifyData.status === 'success') {
+            alert('Welcome to Pro! 🎉');
+            fetchSettings(); // Refresh UI
+          } else {
+            alert('Payment verification failed');
+          }
+        },
+        prefill: {
+          email: subscription?.email || '',
+        },
+        theme: {
+          color: '#3b82f6'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      alert('Error initiating payment');
+    }
+  };
+
   return (
     <motion.div
       className="settings-page"
@@ -44,10 +117,18 @@ function SettingsPage() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
-          <h2>💳 Subscription Plan</h2>
+          <div className="card-header-flex">
+            <h2>💳 Subscription Plan</h2>
+            {subscription.plan === 'free' && (
+              <button className="upgrade-btn" onClick={handleUpgrade}>
+                Upgrade to Pro 🚀
+              </button>
+            )}
+          </div>
           <div className="subscription-info">
             <p>
               <strong>Plan:</strong> {subscription.plan.toUpperCase()}
+              {subscription.plan === 'pro' && <span className="pro-badge">PRO</span>}
             </p>
             <p>
               <strong>Routes:</strong> {subscription.routesUsed} /{' '}
